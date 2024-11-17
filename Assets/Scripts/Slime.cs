@@ -16,16 +16,28 @@ public class BattleProperties
 [Serializable]
 public class EduProperties
 {
+    public string name;
     public Personality personality;
     public float Intimacy;
     public float Grown;
+}
+
+[Serializable]
+public class DesireProperties
+{
+    public float attackDesire;
+    public float defendDesire;
+    public float skillDesire;
+    public float noobDesire;
+    public float strategyDesire;
 }
 
 public class Slime : MonoBehaviour
 {
     public BattleProperties battleProperties;
     public EduProperties eduProperties;
-    public List<string> skills = new List<string>();
+    private DesireProperties desireProperties;
+    public List<Skill> skills = new List<Skill>();
     
     /// <summary>
     /// 接受伤害并判定是否死亡
@@ -44,8 +56,18 @@ public class Slime : MonoBehaviour
         return false;
     }
 
-    public void Action()
+    public void LearnSkill(Skill skill)
     {
-        
+        skills.Add(skill);
+    }
+
+    public string Action()
+    {
+        //向GLM发送信息
+        string sendStr = "hello";
+        //从GLM接受信息
+        string recvStr = "attack";
+        //根据信息执行行动
+        return recvStr;
     }
 }
