@@ -8,6 +8,7 @@ public class BattleProperties
 {
     public SlimeType type;
     public int HP;
+    public int maxHP;
     public float Attack;
     public float Defence;
     public float Luck;
@@ -20,6 +21,8 @@ public class EduProperties
     public Personality personality;
     public float Intimacy;
     public float Grown;
+    public bool Awaken;
+    public bool isPlayer;
 }
 
 [Serializable]
@@ -36,7 +39,7 @@ public class Slime : MonoBehaviour
 {
     public BattleProperties battleProperties;
     public EduProperties eduProperties;
-    private DesireProperties desireProperties;
+    public DesireProperties desireProperties;
     public List<Skill> skills = new List<Skill>();
     
     /// <summary>
@@ -48,6 +51,7 @@ public class Slime : MonoBehaviour
     {
         int damageInt = Mathf.RoundToInt(damage);
         battleProperties.HP -= damageInt;
+        GameManager.OnSlimeHpChanged?.Invoke(battleProperties.HP,eduProperties.isPlayer);
         if (battleProperties.HP <= 0)
         {
             battleProperties.HP = 0;
@@ -56,18 +60,31 @@ public class Slime : MonoBehaviour
         return false;
     }
 
+    public string GetSkillDescription()
+    {
+        string description = "";
+        if (skills.Count <= 0)
+        {
+            description = "No skills!";
+        }
+        else
+        {
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+                string desp = "技能" + i + ":" + skill.description + ",";
+                description += desp;
+            }
+        }
+        
+        return description;
+    }
+
     public void LearnSkill(Skill skill)
     {
         skills.Add(skill);
     }
-
-    public string Action()
-    {
-        //向GLM发送信息
-        string sendStr = "hello";
-        //从GLM接受信息
-        string recvStr = "attack";
-        //根据信息执行行动
-        return recvStr;
-    }
+    
+    
+    
 }

@@ -1,12 +1,14 @@
 ﻿
 using Unity.Mathematics;
+using UnityEngine;
 
 public enum SlimeType
 {
     Water,
     Fire,
     Wood,
-    Lightning
+    Lightning,
+    None
 }
 
 public enum Personality
@@ -21,6 +23,7 @@ public enum Personality
 
 public static class GameplayManager
 {
+    const float CRITICAL_COF  = 2.0f;
     //属性克制表
     public static float4x4 CounterMatrix = new float4x4(
            //  水     火    木     电
@@ -31,12 +34,70 @@ public static class GameplayManager
     );
     
     //数值计算
-    public static float GetDamage(Slime AttackerType, Slime DefenderType)
+    public static float GetCounterConfficient(SlimeType attacker, SlimeType defender)
     {
-        int attacker= (int)AttackerType.battleProperties.type;
-        int defender = (int)DefenderType.battleProperties.type;
-        float res = CounterMatrix[attacker][defender];
+        if (attacker == SlimeType.None) return 1.0f;
+        else
+        {
+            int attackerInt = (int)attacker;
+            int defenderInt = (int)defender;
+            return CounterMatrix[defenderInt][attackerInt];
+        }
+    }
+
+    public static int GetDamage(Slime attacker, Slime defender)
+    {
+        //是否闪避
+        float doge = defender.battleProperties.Speed / 200f;
+        float aim = UnityEngine.Random.Range(0, 1f);
+        if (aim < doge)
+        {
+            //全部防出去了啊
+            return -1;
+        }
+        //是否暴击
+        float luck = attacker.battleProperties.Luck / 100f;
+        float critical  = UnityEngine.Random.Range(0f, 1f);
+        bool isCritical = critical < luck;
+        //基础攻击值
+        float defence = defender.battleProperties.Defence;
+        float baseDamage = attacker.battleProperties.Attack - defence;
+        baseDamage = baseDamage < 0 ? 0 : baseDamage;
+        //是否克制
+        // float ressistance = defender.eduProperties.Awaken == true ? .5f : 0.0f;
+        // float typeCof = GetCounterConfficient(attacker.battleProperties.type, defender.battleProperties.type);
+        // typeCof = typeCof > 1.0f ? (typeCof - ressistance) : typeCof;
         
-        return res;
+        float finalDamage = baseDamage * 1.0f * (isCritical ? CRITICAL_COF : 1f);
+        Debug.Log($"type: 1.0f,baseDamage: {baseDamage},finalDamage: {finalDamage}");
+        return Mathf.RoundToInt(finalDamage);
+    }
+    
+    public static float GetDamage(Skill skill,Slime user, Slime target)
+    {
+        //是否闪避
+        float doge = target.battleProperties.Speed / 200f;
+        float aim = UnityEngine.Random.Range(0, 1f);
+        if (aim < doge)
+        {
+            //全部防出去了啊
+            return -1;
+        }
+        //是否暴击
+        float luck = user.battleProperties.Luck / 100f;
+        float critical  = UnityEngine.Random.Range(0f, 1f);
+        bool isCritical = critical < luck;
+        //基础攻击值
+        float defence = target.battleProperties.Defence;
+        float baseDamage = skill.number * user.battleProperties.Attack - defence;
+        baseDamage = baseDamage < 0 ? 0 : baseDamage;
+        //是否克制
+        float ressistance = target.eduProperties.Awaken == true ? .5f : 0.0f;
+        float typeCof = GetCounterConfficient(skill.type, target.battleProperties.type);
+        typeCof = typeCof > 1.0f ? (typeCof - ressistance) : typeCof;
+        
+        float finalDamage = baseDamage * typeCof * (isCritical ? CRITICAL_COF : 1f);
+        
+        return Mathf.RoundToInt(finalDamage);
     }
 }
