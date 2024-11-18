@@ -17,6 +17,7 @@ public class Skill
     public string description;
     public SkillType skillType; 
     public SlimeType type;//??????
+    [SerializeField]
     public float number;//
     public bool buffTargetedSelf = true;
     /// <summary>
@@ -33,7 +34,7 @@ public class Skill
         // }
         // else
         
-        Debug.Log($"{user.eduProperties.name}??{obj.eduProperties.name}?????{name}");
+        Debug.Log($"{user.eduProperties.name}∂‘{obj.eduProperties.name} Õ∑≈¡À{name}");
         
         bool resl = false;
         switch (skillType)

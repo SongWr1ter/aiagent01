@@ -15,7 +15,7 @@ public class TextPanel : MonoBehaviour
  
     public void StartTyping(string text)
     {
-        if(isTyping) return;
+        if(isTyping) StopTyping();
         fullText = text;
         StartTyping();
     }
