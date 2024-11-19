@@ -20,6 +20,11 @@ namespace GlmUnity
 
         private static string _apiKey => _key.Split('.')[0];
         private static string _secretKey => _key.Split(".")[1];
+        
+        private static string _keyv2 = "f2090ce4c5f65389b1177a024bae420c.OFvk0T14U0eGgYv6";
+
+        private static string _apiKeyv2 => _keyv2.Split('.')[0];
+        private static string _secretKeyv2 => _keyv2.Split(".")[1];
 
         /// <summary>
         /// 获取GLM回复
@@ -85,29 +90,81 @@ namespace GlmUnity
             }
         }
 
-        /// <summary>
-        /// 根据GLM文档生成一个函数工具
+                /// <summary>
+        /// 获取GLM回复
         /// </summary>
+        /// <param name="chatHistory">历史对话记录</param>
+        /// <param name="temperature">模型的temperature</param>
+        /// <param name="toolList">如果使用GLM的模型工具，则这里为需要使用的工具列表</param>
         /// <returns></returns>
-        public static GlmFunctionTool GetDummyFunctionTool()
+        public static async Task<SendData> GenerateGlmResponseV2(List<SendData> chatHistory, float temperature = 0.6f, List<GlmTool> toolList = null)
         {
-            GlmFunctionTool tool = new GlmFunctionTool("get_flight_number", "根据始发地、目的地和日期，查询对应日期的航班号");
-            tool.AddProperty("departure", "string", "出发地", true);
-            tool.AddProperty("destination", "string", "目的地", true);
-            tool.AddProperty("date", "string", "日期", true);
-            return tool;
+        GenerateResponse:
+            // 将请求转化为JSON
+            RequestData requestObject = new RequestData
+            {
+                model = "glm-4-air",  // 使用的GLM模型类型，可视情况更换
+                messages = chatHistory,
+                temperature = Mathf.Clamp(temperature, 0f, 1f),
+                tools = toolList,
+            };
+            string jsonPayload = JsonConvert.SerializeObject(requestObject, Formatting.Indented);
+
+            // 发送请求
+            using (UnityWebRequest request = new UnityWebRequest(_url, "POST"))
+            {
+                byte[] data = System.Text.Encoding.UTF8.GetBytes(jsonPayload);
+                request.uploadHandler = (UploadHandler)new UploadHandlerRaw(data);
+                request.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+
+                request.SetRequestHeader("Content-Type", "application/json");
+                request.SetRequestHeader("Authorization", GetToken(2));
+
+                await request.SendWebRequest();
+
+                // 如果代码=200，则请求成功，开始读取内容
+                if (request.responseCode == 200)
+                {
+                    string msg = request.downloadHandler.text;
+                    ResponseData response = JsonConvert.DeserializeObject<ResponseData>(msg);
+
+                    // 确保GLM生成至少一个可用的回复
+                    if (response.choices.Count > 0)
+                    {
+                        return response.choices[0].message;
+                    }
+                    else
+                    {
+                        Debug.LogWarning("GLM回复为空！\n" + msg);
+                    }
+                }
+                else if (request.responseCode == 1301)
+                {
+                    Debug.LogWarning("GLM返回代码1301，代表生成了不良信息，重新生成中……");
+                    goto GenerateResponse;
+                }
+                else
+                {
+                    Debug.LogWarning($"GLM请求出错，三秒后重新尝试请求。\n\r{request.error}");
+                    await Task.Delay(3000);
+                    if (Application.isPlaying)
+                        goto GenerateResponse;
+                }
+                return null;
+            }
         }
 
+
         #region Token处理
-        private static string GetToken()
+        private static string GetToken(int choice = 1)
         {
             long expirationMilliseconds = DateTimeOffset.Now.AddHours(1).ToUnixTimeMilliseconds();
             long timestampMilliseconds = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            string jwtToken = GenerateJwtToken(_apiKey, expirationMilliseconds, timestampMilliseconds);
+            string jwtToken = GenerateJwtToken(choice == 1 ? _apiKey : _apiKeyv2, expirationMilliseconds, timestampMilliseconds,choice);
             return jwtToken;
         }
 
-        private static string GenerateJwtToken(string apiKeyId, long expirationMilliseconds, long timestampMilliseconds)
+        private static string GenerateJwtToken(string apiKeyId, long expirationMilliseconds, long timestampMilliseconds,int choice = 1)
         {
             // 构建Header
             string _headerJson = "{\"alg\":\"HS256\",\"sign_type\":\"SIGN\"}";
@@ -120,7 +177,7 @@ namespace GlmUnity
             string encodedPayload = Base64UrlEncode(_playLoadJson);
 
             // 构建签名
-            string signature = HMACsha256(_secretKey, $"{encodedHeader}.{encodedPayload}");
+            string signature = HMACsha256(choice == 1 ? _secretKey : _secretKeyv2, $"{encodedHeader}.{encodedPayload}");
             // 组合Header、Payload和Signature生成JWT令牌
             string jwtToken = $"{encodedHeader}.{encodedPayload}.{signature}";
 
@@ -188,4 +245,5 @@ namespace GlmUnity
             return ((Task)tcs.Task).GetAwaiter();
         }
     }
+
 }

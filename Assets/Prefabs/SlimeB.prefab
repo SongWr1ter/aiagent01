@@ -118,4 +118,11 @@ MonoBehaviour:
     skillDesire: 0
     noobDesire: 0
     strategyDesire: 0
-  skills: []
+  skills:
+  - name: "\u9739\u96F3"
+    description: "\u9020\u6210120%\u653B\u51FB\u529B\u7684\u96F7\u5C5E\u6027\u4F24\u5BB3"
+    skillType: 0
+    type: 3
+    number: 1.2
+    buffTargetedSelf: 0
+    count: 3

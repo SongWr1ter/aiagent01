@@ -22,7 +22,7 @@ public class TextPanel : MonoBehaviour
     void Update()
     {
         // 检测空格键是否被按下
-        if (Input.GetKeyDown(KeyCode.Space) && isTyping)
+        if (Input.GetMouseButtonDown(0) && isTyping)
         {
             StopTyping(); // 停止逐字显示
             dialogueText.text = fullText; // 立即显示全部文本

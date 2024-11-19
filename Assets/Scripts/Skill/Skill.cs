@@ -20,6 +20,8 @@ public class Skill
     [SerializeField]
     public float number;//
     public bool buffTargetedSelf = true;
+    public int count;
+    private string criticalOrDoge;
     /// <summary>
     /// ??????
     /// </summary>
@@ -28,6 +30,7 @@ public class Skill
     /// <returns>obj???????</returns>
     public virtual bool Discharge(Slime user, Slime obj)
     {
+        if (--count < 0) return false;
         // if (--count < 0)
         // {
         //     Debug.Log($"{user.eduProperties.name}?????{name},??????????");
@@ -81,7 +84,19 @@ public class Skill
 
     bool ATTACKType(Slime user, Slime target)
     {
+        criticalOrDoge = "";
         float damage = GameplayManager.GetDamage(this,user,target);
+        if (damage == -1)
+        {
+            //被闪避
+            damage = 0;
+            criticalOrDoge += target.eduProperties.name + "闪开了" + user.eduProperties.name + "的攻击!";
+        }else if (damage < 0)
+        {
+            //暴击
+            damage *= -1.0f;
+            criticalOrDoge += user.eduProperties.name + "打出了暴击!";
+        }
         return target.RecvDamage(damage);
     }
 
@@ -113,5 +128,10 @@ public class Skill
     {
         float origin = target.battleProperties.Luck;
         target.battleProperties.Luck += origin * number;
+    }
+
+    public string GetDogeOrCrtic()
+    {
+        return criticalOrDoge;
     }
 }

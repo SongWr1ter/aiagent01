@@ -24,7 +24,7 @@ public class GameManager : SingleTon<GameManager>
     private GameState gameState;
     private bool mutex = false;
     private bool canContinue = true;
-    
+    private string criticalOrDoge;//描述一回合中谁暴击了谁闪避了
     public GameObject playerPrefab;
     public GameObject enemyPrefab;
     [HideInInspector] public Slime playerSlime;
@@ -54,7 +54,7 @@ public class GameManager : SingleTon<GameManager>
         enemySlime = enemy.GetComponent<Slime>();
         enemyPanel.Init(enemySlime);
         
-        GLMStart(playerSlime,enemySlime);
+        GLMStart();
         yield return new WaitForSeconds(1f);
         
         //开启绝命乱斗的循环!
@@ -63,6 +63,7 @@ public class GameManager : SingleTon<GameManager>
         {
             //决定谁先手
             playerFirst = (playerSlime.battleProperties.Speed >= enemySlime.battleProperties.Speed);
+            criticalOrDoge = "";
             mutex = true;
             canContinue = false;
             GlmTakeTurn(playerFirst);
@@ -70,7 +71,7 @@ public class GameManager : SingleTon<GameManager>
             {
                 yield return new WaitForSeconds(1f);
             }
-            print("No." + (++i) +"Turn Over");
+            print("No." + (++i) +"Turn Over ready2next round");
             TurnOverEventHandler();
             while (!canContinue)
             {
@@ -157,6 +158,17 @@ public class GameManager : SingleTon<GameManager>
     void AttackChoice(Slime attacker,Slime defender)
     {
         float damage = GameplayManager.GetDamage(attacker,defender);
+        if (damage == -1)
+        {
+            //被闪避
+            damage = 0;
+            criticalOrDoge += defender.eduProperties.name + "闪开了" + attacker.eduProperties.name + "的攻击!";
+        }else if (damage < 0)
+        {
+            //暴击
+            damage *= -1.0f;
+            criticalOrDoge += attacker.eduProperties.name + "打出了暴击!";
+        }
         bool res = defender.RecvDamage(damage);
         if (res == true)
         {
@@ -184,6 +196,8 @@ public class GameManager : SingleTon<GameManager>
         {
             gameState = GameState.GameOver;
         }
+
+        criticalOrDoge += user.skills[skillID].GetDogeOrCrtic();
     }
 
     void NoobChoice(Slime user)
@@ -268,25 +282,20 @@ public class GameManager : SingleTon<GameManager>
     {
         public string predict_result1;
         public string predict_result2;
-        public string log;
+        // public string log;
     }
-    private void GLMStart(Slime a,Slime b)
+    private void GLMStart()
     {
         chatHistory.Clear();
         // 读取玩家输入并创建用户信息
-        string playerInput = $"史莱姆{a.eduProperties.name}的生命值有{a.battleProperties.maxHP},防御值{a.battleProperties.Defence},攻击值{a.battleProperties.Attack}" +
-                             $"属性为${a.battleProperties.type},技能描述:{a.GetSkillDescription()}";
-        string enemyInput = $"史莱姆{a.eduProperties.name}的生命值有{a.battleProperties.maxHP},防御值{a.battleProperties.Defence},攻击值{a.battleProperties.Attack}" +
-                            $"属性为${a.battleProperties.type},技能描述:{a.GetSkillDescription()}";
         // 创建system prompt，让GLM进行角色扮演。System prompt不是强制要求的
         SendData systemPrompt = new SendData("system",
             "有两个史莱姆正在进行回合制战斗，史莱姆能做出的行动有四种：攻击，防御，施放法术以及发呆。每个史莱姆" +
-            "的属性是水火木雷四个属性中的一个，四个属性相互克制，如水克火，火克木，木克雷，雷克水。" +
-            "这两个史莱姆的描述如下：" +playerInput+enemyInput+
-            "在每个回合开始前，我会告诉你第一个行动的史莱姆是谁。" +
-            "现在每当我说出第一个行动的史莱姆之后，告诉我每个史莱姆在这个回合进行的行动，只预测一个结果,并以一位活泼可爱的比赛解说身份进行现场" +
+            "的属性是水火木雷四个属性中的一个，四个属性相互克制，如水克火，火克木，木克雷，雷克水。攻击行动不会触发克制。" +
+            "在每个回合开始前，我会告诉你两个史莱姆的状态，并告诉你第一个行动的史莱姆是谁。" +
+            "现在每当我说出第一个行动的史莱姆之后，告诉我每个史莱姆在这个回合进行的行动，只预测一个结果" +
             "播报。预测结果的取值从\"attack\"、\"defend\"、\"skillx\"、\"noob\"中选择" +
-            "最终以json格式输出三个变量:\"predict_result1\":先手史莱姆的行动、\"predict_result2\":后史莱姆的行动、\"log\":解说记录以\"Amy:\"开头。" +
+            "最终以json格式输出两个变量:\"predict_result1\":先手史莱姆的行动、\"predict_result2\":后史莱姆的行动" +
             "。\"skillx\"里的x是技能编号.");
 
 
@@ -298,9 +307,20 @@ public class GameManager : SingleTon<GameManager>
     {
         string input = "这一回合";
         string x = _playerFirst == true ? $"{playerSlime.eduProperties.name}先手" : $"{enemySlime.eduProperties.name}先手";
-        SendData p = new SendData("user", input + x);
-        chatHistory.Add(p);
-
+        
+        string playerInput = $"史莱姆{playerSlime.eduProperties.name}的生命值有{playerSlime.battleProperties.HP},防御值{playerSlime.battleProperties.Defence},攻击值{playerSlime.battleProperties.Attack}" +
+                             $"属性为${playerSlime.battleProperties.type},技能描述:{playerSlime.GetSkillDescription()},性格为{playerSlime.eduProperties.personality}\n";
+        string enemyInput = $"史莱姆{enemySlime.eduProperties.name}的生命值有{enemySlime.battleProperties.HP},防御值{enemySlime.battleProperties.Defence},攻击值{enemySlime.battleProperties.Attack}" +
+                            $"属性为${enemySlime.battleProperties.type},技能描述:{enemySlime.GetSkillDescription()},性格为{enemySlime.eduProperties.personality}";
+        
+        var playerMessage = new SendData()
+        {
+            role = "user", 
+            content = input + x + "\n两个史莱姆描述如下"+ playerInput + enemyInput
+        };
+        
+        chatHistory.Add(playerMessage);
+        
         Action(_playerFirst);
     }
     
@@ -308,18 +328,7 @@ public class GameManager : SingleTon<GameManager>
     {
         #region 发送背景条件，让GLM返回战斗流程
         // 读取玩家输入并创建用户信息
-        // string playerInput = $"第一个史莱姆{user.eduProperties.name}的生命值有{user.battleProperties.HP},防御值{user.battleProperties.Defence},攻击值{user.battleProperties.Attack}" +
-        //                      $"属性为${user.battleProperties.type},技能描述:{user.GetSkillDescription()}";
-        // string enemyInput = $"第二个史莱姆{target.eduProperties.name}的生命值有{target.battleProperties.HP},防御值{target.battleProperties.Defence},攻击值{target.battleProperties.Attack}" +
-        //                      $"属性为${target.battleProperties.type},技能描述:{target.GetSkillDescription()}";
-        //
-        // var playerMessage = new SendData()
-        // {
-        //     role = "user", 
-        //     content = playerInput + enemyInput
-        // };
-        //
-        // chatHistory.Add(playerMessage);
+        
 
         // 使用GLMHandler.GenerateGLMResponse生成GLM回复，设置tmeperature=0.8
         // 注意需要使用await关键词
@@ -346,15 +355,28 @@ public class GameManager : SingleTon<GameManager>
         LogData data = JsonUtility.FromJson<LogData>(extractedString);
         
         #endregion
-        chatHistory.Add(new SendData
-        {
-            role = "system",
-            content = data.log
-        });
-        mutex = false;
+        chatHistory.Add(respone_origin);
         StartCoroutine(ActionShow(data, _playerFirst));
     }
 
+    private async void BattleDescription(string bd)
+    {
+        
+        var msg = new SendData()
+            {
+                role = "user", 
+                content = "根据我下面说出的两个史莱姆做出的行动以及行动的结果，以一位活泼可爱的比赛解说的身份，对战斗情况进行描述。\n" +
+                          bd +
+                          criticalOrDoge +
+                          "解说记录以\"Amy:\"开头。"
+            };
+        chatHistory.Add(msg);
+        SendData respone_origin = await GlmHandler.GenerateGlmResponse(chatHistory, 0.6f);
+        
+        chatHistory.Add(respone_origin);
+        
+        textPanel.StartTyping(respone_origin.content);
+    }
     IEnumerator ActionShow(LogData data,bool _playerFirst)
     {
         Slime first, second;
@@ -368,16 +390,52 @@ public class GameManager : SingleTon<GameManager>
             first = enemySlime;
             second = playerSlime;
         }
-        print($"[{data.log}]\n{first.eduProperties.name}先手。选择{data.predict_result1}\n{second.eduProperties.name}选择{data.predict_result2}");
-        textPanel.StartTyping(data.log);
-        SlimeAction(first,second,data.predict_result1);
+        //翻译行动为中文
+        
+        
+       
+        string bd =
+            $"{first.eduProperties.name}做出了{ActionTrans(data.predict_result1,first)}，{second.eduProperties.name}做出了{ActionTrans(data.predict_result2,second)}。\n" +
+            criticalOrDoge;
+        //BattleDescription(bd);//解说
+        
+        textPanel.StartTyping(bd);
+        SlimeAction(first,second,data.predict_result1);//1号演出
         yield return new WaitForSeconds(1f);
         if (gameState == GameState.GameOver)
         {
             yield break;
         }
-        SlimeAction(second,first,data.predict_result2);
+        SlimeAction(second,first,data.predict_result2);//2号演出
         yield return new WaitForSeconds(1f);
+        mutex = false;//本回合回合结束，主Corotine恢复运行
+        print($"{first.eduProperties.name}先手。选择{data.predict_result1},{second.eduProperties.name}选择{data.predict_result2}");
+       
+    }
+
+    private string ActionTrans(string action,Slime slime)
+    {
+        Regex regex = new Regex(pattern);
+        var resl = regex.Match(action);
+        if (resl.Success)
+        {
+            string number = resl.Groups[1].Value;
+            return "释放技能:"+slime.skills[int.Parse(number)].name;
+        }
+        switch (action)
+        {
+            case AttackPrompt:
+                return "攻击";
+            case DefendPrompt:
+                return "防御";
+            case NoobPrompt:
+                return "发呆";
+            case StrategyPrompt:
+                return "策略";
+            default:
+                Debug.LogError("Unknown action prompt");
+                return "ERROR";
+        }
     }
 }
 /*

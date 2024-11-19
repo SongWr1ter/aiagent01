@@ -72,7 +72,7 @@ public class Slime : MonoBehaviour
             for (int i = 0; i < skills.Count; i++)
             {
                 var skill = skills[i];
-                string desp = "技能" + i + ":" + skill.description + ",";
+                string desp = "技能" + i + ":名字是"+ skill.name + "," + skill.description + ",剩余使用次数" + skill.count;
                 description += desp;
             }
         }

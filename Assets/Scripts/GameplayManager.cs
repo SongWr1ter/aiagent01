@@ -44,7 +44,12 @@ public static class GameplayManager
             return CounterMatrix[defenderInt][attackerInt];
         }
     }
-
+    /// <summary>
+    /// 计算伤害数值
+    /// </summary>
+    /// <param name="attacker"></param>
+    /// <param name="defender"></param>
+    /// <returns>-1代表闪避，正数代表造成伤害，其他负数代表造成暴击</returns>
     public static int GetDamage(Slime attacker, Slime defender)
     {
         //是否闪避
@@ -68,11 +73,17 @@ public static class GameplayManager
         // float typeCof = GetCounterConfficient(attacker.battleProperties.type, defender.battleProperties.type);
         // typeCof = typeCof > 1.0f ? (typeCof - ressistance) : typeCof;
         
-        float finalDamage = baseDamage * 1.0f * (isCritical ? CRITICAL_COF : 1f);
+        float finalDamage = baseDamage * 1.0f * (isCritical ? -CRITICAL_COF : 1f);
         Debug.Log($"type: 1.0f,baseDamage: {baseDamage},finalDamage: {finalDamage}");
         return Mathf.RoundToInt(finalDamage);
     }
-    
+    /// <summary>
+    /// 计算伤害数值
+    /// </summary>
+    /// <param name="skill"></param>
+    /// <param name="user"></param>
+    /// <param name="target"></param>
+    /// <returns>-1代表闪避，正数代表造成伤害，其他负数代表造成暴击<</returns>
     public static float GetDamage(Skill skill,Slime user, Slime target)
     {
         //是否闪避
@@ -96,7 +107,7 @@ public static class GameplayManager
         float typeCof = GetCounterConfficient(skill.type, target.battleProperties.type);
         typeCof = typeCof > 1.0f ? (typeCof - ressistance) : typeCof;
         
-        float finalDamage = baseDamage * typeCof * (isCritical ? CRITICAL_COF : 1f);
+        float finalDamage = baseDamage * typeCof * (isCritical ? -CRITICAL_COF : 1f);
         
         return Mathf.RoundToInt(finalDamage);
     }

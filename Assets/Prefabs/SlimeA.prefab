@@ -119,9 +119,10 @@ MonoBehaviour:
     noobDesire: 0
     strategyDesire: 0
   skills:
-  - name: Water
+  - name: "\u55B7\u6C34"
     description: "\u9020\u6210120%\u653B\u51FB\u529B\u7684\u6C34\u5C5E\u6027\u4F24\u5BB3\u3002"
     skillType: 0
     type: 0
     number: 1.2
     buffTargetedSelf: 0
+    count: 3
