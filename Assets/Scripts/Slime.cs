@@ -41,7 +41,10 @@ public class Slime : MonoBehaviour
     public EduProperties eduProperties;
     public DesireProperties desireProperties;
     public List<Skill> skills = new List<Skill>();
-    
+    private SlimeAnimator animator;
+    public GameObject noobBubble;
+    public GameObject defendBubble;
+    public GameObject dogeBubble;
     /// <summary>
     /// 接受伤害并判定是否死亡
     /// </summary>
@@ -84,7 +87,31 @@ public class Slime : MonoBehaviour
     {
         skills.Add(skill);
     }
+
+    public void SetAnimatorState(SlimeAnimator.SlimeAnimation state)
+    {
+        if (animator == null)
+        {
+            animator = GetComponent<SlimeAnimator>();
+        }
+        animator.SetCurrentAnimation(state);
+    }
+
+    public void NoobReact()
+    {
+        var go = Instantiate(noobBubble, transform.position, Quaternion.identity);
+        go.transform.position = transform.position + Vector3.up;
+    }
     
+    public void DefendReact()
+    {
+        var go = Instantiate(defendBubble, transform.position, Quaternion.identity);
+        go.transform.position = transform.position + Vector3.up;
+    }
     
-    
+    public void DogeReact()
+    {
+        var go = Instantiate(dogeBubble, transform.position, Quaternion.identity);
+        go.transform.position = transform.position + Vector3.up;
+    }
 }

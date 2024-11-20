@@ -22,6 +22,8 @@ public class Skill
     public bool buffTargetedSelf = true;
     public int count;
     private string criticalOrDoge;
+    private bool doge;
+    private bool critical;
     /// <summary>
     /// ??????
     /// </summary>
@@ -30,14 +32,14 @@ public class Skill
     /// <returns>obj???????</returns>
     public virtual bool Discharge(Slime user, Slime obj)
     {
-        if (--count < 0) return false;
+        --count;
         // if (--count < 0)
         // {
         //     Debug.Log($"{user.eduProperties.name}?????{name},??????????");
         // }
         // else
         
-        Debug.Log($"{user.eduProperties.name}对{obj.eduProperties.name}释放了{name}");
+        //Debug.Log($"{user.eduProperties.name}对{obj.eduProperties.name}释放了{name}");
         
         bool resl = false;
         switch (skillType)
@@ -85,17 +87,21 @@ public class Skill
     bool ATTACKType(Slime user, Slime target)
     {
         criticalOrDoge = "";
+        doge = false;
+        critical = false;
         float damage = GameplayManager.GetDamage(this,user,target);
-        if (damage == -1)
+        if (damage == -1.0f)
         {
             //被闪避
+            doge = true;
             damage = 0;
-            criticalOrDoge += target.eduProperties.name + "闪开了" + user.eduProperties.name + "的攻击!";
+            criticalOrDoge = target.eduProperties.name + "闪开了" + user.eduProperties.name + "的"+name+"!";
         }else if (damage < 0)
         {
             //暴击
+            critical = true;
             damage *= -1.0f;
-            criticalOrDoge += user.eduProperties.name + "打出了暴击!";
+            criticalOrDoge = user.eduProperties.name + "打出了暴击!";
         }
         return target.RecvDamage(damage);
     }
@@ -133,5 +139,11 @@ public class Skill
     public string GetDogeOrCrtic()
     {
         return criticalOrDoge;
+    }
+
+    public bool GetCriticalOrDoge(int i)
+    {
+        if (i == 0) return critical;
+        else return doge;
     }
 }

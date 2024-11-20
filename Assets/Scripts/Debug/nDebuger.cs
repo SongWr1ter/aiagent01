@@ -12,6 +12,7 @@ public class nDebuger : MonoBehaviour
     public TextPanel TextPanel;
     [TextArea]
     public string TextArea;
+    bool flag = false;
     private void Start()
     {
         // PlayerPanelItem.Init(A);
@@ -21,9 +22,10 @@ public class nDebuger : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Y))
+        if (Input.GetKeyDown(KeyCode.Space) && flag == false)
         {
             GameManager.Instance.Setup();
+            flag = !flag;
             //TextPanel.StartTyping(TextArea);
             //GameManager.Instance.Setup();
             //GameManager.Instance.Action(A, B);

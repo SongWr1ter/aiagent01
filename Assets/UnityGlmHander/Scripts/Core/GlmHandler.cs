@@ -21,7 +21,7 @@ namespace GlmUnity
         private static string _apiKey => _key.Split('.')[0];
         private static string _secretKey => _key.Split(".")[1];
         
-        private static string _keyv2 = "f2090ce4c5f65389b1177a024bae420c.OFvk0T14U0eGgYv6";
+        private static string _keyv2 = "7f5b20f796c1588342dc17f9cfb621da.spD6aRgXLCHAFsiO";
 
         private static string _apiKeyv2 => _keyv2.Split('.')[0];
         private static string _secretKeyv2 => _keyv2.Split(".")[1];

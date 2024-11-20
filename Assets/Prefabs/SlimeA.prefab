@@ -103,7 +103,7 @@ MonoBehaviour:
     maxHP: 100
     Attack: 20
     Defence: 10
-    Luck: 1
+    Luck: 100
     Speed: 6
   eduProperties:
     name: yummy

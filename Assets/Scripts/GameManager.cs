@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Text.RegularExpressions;
 using GlmUnity;
+using UnityEngine.Rendering;
+using UnityEngine.UI;
 
 
 public class GameManager : SingleTon<GameManager>
@@ -13,6 +15,17 @@ public class GameManager : SingleTon<GameManager>
         Start,
         Intervuring,
         GameOver
+    }
+
+    class turnEventRecord
+    {
+        public Slime user;
+        public Slime target;
+        public int skill_id;
+        public Action action;
+        public float number;
+        public SlimeAnimator.SlimeAnimation userAnimation;
+        public SlimeAnimator.SlimeAnimation targetAnimation;
     }
     public const string AttackPrompt = "attack";
     public const string DefendPrompt = "defend";
@@ -24,7 +37,7 @@ public class GameManager : SingleTon<GameManager>
     private GameState gameState;
     private bool mutex = false;
     private bool canContinue = true;
-    private string criticalOrDoge;//描述一回合中谁暴击了谁闪避了
+    [SerializeField]private string criticalOrDoge;//描述一回合中谁暴击了谁闪避了
     public GameObject playerPrefab;
     public GameObject enemyPrefab;
     [HideInInspector] public Slime playerSlime;
@@ -34,11 +47,27 @@ public class GameManager : SingleTon<GameManager>
     public StatePanelItem playerPanel;
     public StatePanelItem enemyPanel;
     public TextPanel textPanel;
+    private GLMLoading glmLoading;
+    private InterveneButton interveneButton;
+    public Button continueButton;
+    public static List<string> api_keys = new List<string>();
+    private List<turnEventRecord> turnEventRecords = new List<turnEventRecord>();
+    private void Start()
+    {
+        glmLoading = GameObject.FindObjectOfType<GLMLoading>();
+        interveneButton = GameObject.FindObjectOfType<InterveneButton>();
+        continueButton.onClick.AddListener(OnButtonClick);
+    }
+
+    private void OnDisable()
+    {
+        continueButton.onClick.RemoveListener(OnButtonClick);
+    }
 
     public void Setup()
     {
         gameState = GameState.Start;
-
+        
         StartCoroutine(SetupBattle());
     }
     bool playerFirst;
@@ -55,16 +84,15 @@ public class GameManager : SingleTon<GameManager>
         enemyPanel.Init(enemySlime);
         
         GLMStart();
-        yield return new WaitForSeconds(1f);
-        
         //开启绝命乱斗的循环!
         int i = 0;
         while (gameState != GameState.GameOver)
         {
+            turnEventRecords.Clear();
             //决定谁先手
             playerFirst = (playerSlime.battleProperties.Speed >= enemySlime.battleProperties.Speed);
             criticalOrDoge = "";
-            mutex = true;
+            SetMutex(true);
             canContinue = false;
             GlmTakeTurn(playerFirst);
             while (mutex)
@@ -91,17 +119,30 @@ public class GameManager : SingleTon<GameManager>
 
         }
     }
-
-    private void Update()
+    #region UI功能
+    private void OnButtonClick()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (mutex == false)
         {
-            if (mutex == false)
-            {
-                canContinue = true;
-            }
+            canContinue = true;
         }
     }
+
+    public void PlayerInterveneSend(string text)
+    {
+        if (mutex)
+        {
+            Debug.LogError("干预时间不对");
+            return;
+        }
+        SendData prompt = new SendData
+        {
+            role = "user",
+            content = "现在玩家作为"+playerSlime.eduProperties.name+"的训练师，在这回合开始前对其说了下面这段话\n\""+text+"\""
+        };
+        chatHistory.Add(prompt);
+    }
+    #endregion
 
     /// <summary>
     /// 实际执行史莱姆的行动。
@@ -150,18 +191,15 @@ public class GameManager : SingleTon<GameManager>
     }
 
     #region 史莱姆的选择
-
-    public void debugattack(Slime attacker,Slime defender)
-    {
-        AttackChoice(attacker, defender);
-    }
     void AttackChoice(Slime attacker,Slime defender)
     {
         float damage = GameplayManager.GetDamage(attacker,defender);
+        bool doge = false;
         if (damage == -1)
         {
             //被闪避
             damage = 0;
+            doge = true;
             criticalOrDoge += defender.eduProperties.name + "闪开了" + attacker.eduProperties.name + "的攻击!";
         }else if (damage < 0)
         {
@@ -169,40 +207,91 @@ public class GameManager : SingleTon<GameManager>
             damage *= -1.0f;
             criticalOrDoge += attacker.eduProperties.name + "打出了暴击!";
         }
-        bool res = defender.RecvDamage(damage);
-        if (res == true)
+        
+        turnEventRecords.Add(new turnEventRecord
         {
-            //defender has dead
-            gameState = GameState.GameOver;
-        }
+            user = attacker,
+            target = defender,
+            action = () =>
+            {
+                bool res = defender.RecvDamage(damage);
+                if (doge) defender.DogeReact();
+                if (res == true)
+                {
+                    //defender has dead
+                    gameState = GameState.GameOver;
+                }
+            },
+            number = damage,
+            userAnimation = SlimeAnimator.SlimeAnimation.jump_attack,
+            targetAnimation = doge?SlimeAnimator.SlimeAnimation.idle:SlimeAnimator.SlimeAnimation.hurt
+        });
     }
 
     void DefendChoice(Slime slime)
     {//回合结束后要删除这个效果
         float bonus = slime.battleProperties.Defence * 0.5f;
-        slime.battleProperties.Defence += bonus;
-        AddTurnOverEvent(new TurnOverEvent
+        
+        turnEventRecords.Add(new turnEventRecord
         {
-            duration = 1,
-            eventType = TurnOverEvent.EventType.DefendOver,
-            obj = slime,
-            x = bonus
+            user = slime,
+            target = null,
+            action = () =>
+            {
+                slime.DefendReact();
+                slime.battleProperties.Defence += bonus;
+                AddTurnOverEvent(new TurnOverEvent
+                {
+                    duration = 1,
+                    eventType = TurnOverEvent.EventType.DefendOver,
+                    obj = slime,
+                    x = bonus
+                });
+            },
+            number = bonus
         });
     }
 
     void SkillChoice(Slime user, Slime obj, int skillID)
     {
-        if (user.skills[skillID].Discharge(user, obj))
+        
+        
+        turnEventRecords.Add(new turnEventRecord
         {
-            gameState = GameState.GameOver;
-        }
+            user = user,
+            target = obj,
+            action = () =>
+            {
+                if (user.skills[skillID].Discharge(user, obj))
+                {
+                    gameState = GameState.GameOver;
+                }
 
-        criticalOrDoge += user.skills[skillID].GetDogeOrCrtic();
+                criticalOrDoge += user.skills[skillID].GetDogeOrCrtic();
+                if (user.skills[skillID].GetCriticalOrDoge(1))
+                {
+                    obj.DogeReact();
+                }
+            },
+            skill_id = skillID,
+            userAnimation = SlimeAnimator.SlimeAnimation.jump_attack,
+            targetAnimation = SlimeAnimator.SlimeAnimation.hurt
+        });
     }
 
     void NoobChoice(Slime user)
     {
-
+        turnEventRecords.Add(new turnEventRecord
+        {
+            user = user,
+            target = null,
+            action = () =>
+            {
+                user.NoobReact();
+            },
+            skill_id = 0,
+            userAnimation = SlimeAnimator.SlimeAnimation.idle,
+        });
     }
 
     void StrategyChoice(Slime user)
@@ -274,8 +363,11 @@ public class GameManager : SingleTon<GameManager>
 
     #endregion
     
+    #region 大模型
     [SerializeField, Tooltip("玩家和GLM的历史对话记录以List<SendDat>格式保存")]
     private List<SendData> chatHistory = new List<SendData>();
+    [SerializeField, Tooltip("玩家和GLM的历史对话记录以List<SendDat>格式保存")]
+    private List<SendData> chatHistoryV2 = new List<SendData>();
     // 定义一个类来匹配JSON的结构
     [System.Serializable]
     public class LogData
@@ -286,37 +378,60 @@ public class GameManager : SingleTon<GameManager>
     }
     private void GLMStart()
     {
+        #region battle
+
         chatHistory.Clear();
-        // 读取玩家输入并创建用户信息
         // 创建system prompt，让GLM进行角色扮演。System prompt不是强制要求的
         SendData systemPrompt = new SendData("system",
             "有两个史莱姆正在进行回合制战斗，史莱姆能做出的行动有四种：攻击，防御，施放法术以及发呆。每个史莱姆" +
             "的属性是水火木雷四个属性中的一个，四个属性相互克制，如水克火，火克木，木克雷，雷克水。攻击行动不会触发克制。" +
             "在每个回合开始前，我会告诉你两个史莱姆的状态，并告诉你第一个行动的史莱姆是谁。" +
             "现在每当我说出第一个行动的史莱姆之后，告诉我每个史莱姆在这个回合进行的行动，只预测一个结果" +
-            "播报。预测结果的取值从\"attack\"、\"defend\"、\"skillx\"、\"noob\"中选择" +
+            "预测结果的取值从\"attack\"、\"defend\"、\"skillx\"、\"noob\"中选择" +
             "最终以json格式输出两个变量:\"predict_result1\":先手史莱姆的行动、\"predict_result2\":后史莱姆的行动" +
             "。\"skillx\"里的x是技能编号.");
 
-
-        // 将system prompt作为第一条对话记录加入chatHistory
+// 将system prompt作为第一条对话记录加入chatHistory
         chatHistory.Add(systemPrompt);
+        
+
+        #endregion
+
+        #region broadcast
+
+        
+        
+        chatHistoryV2.Clear();
+        // 创建system prompt，让GLM进行角色扮演。System prompt不是强制要求的
+        SendData systemPromptv2 = new SendData("system",
+            "有两个史莱姆正在进行回合制战斗，史莱姆能做出的行动有四种：攻击，防御，施放法术以及发呆。每个史莱姆" +
+            "的属性是水火木雷四个属性中的一个，四个属性相互克制，如水克火，火克木，木克雷，雷克水。攻击行动不会触发克制。" +
+            "现在我会依次告诉你每回合两个史莱姆做出的行动以及行动的结果，请你以一位活泼可爱的比赛解说的身份，对战斗情况进行描述" +
+            "输出结果以\"Amy:\"开头");
+        // 将system prompt作为第一条对话记录加入chatHistory
+        chatHistoryV2.Add(systemPromptv2);
+        #endregion
+
+       
     }
 
     void GlmTakeTurn(bool _playerFirst)
     {
         string input = "这一回合";
-        string x = _playerFirst == true ? $"{playerSlime.eduProperties.name}先手" : $"{enemySlime.eduProperties.name}先手";
-        
-        string playerInput = $"史莱姆{playerSlime.eduProperties.name}的生命值有{playerSlime.battleProperties.HP},防御值{playerSlime.battleProperties.Defence},攻击值{playerSlime.battleProperties.Attack}" +
-                             $"属性为${playerSlime.battleProperties.type},技能描述:{playerSlime.GetSkillDescription()},性格为{playerSlime.eduProperties.personality}\n";
+        string x = _playerFirst == true ? playerSlime.eduProperties.name: enemySlime.eduProperties.name;
+        string y = _playerFirst == false ? playerSlime.eduProperties.name: enemySlime.eduProperties.name;
+        string playerInput = $"史莱姆{playerSlime.eduProperties.name}的生命值有{playerSlime.battleProperties.HP},防御值{playerSlime.battleProperties.Defence},攻击值{playerSlime.battleProperties.Attack}," +
+                             $"暴击率{playerSlime.battleProperties.Luck / 200.0f}%,闪避率{playerSlime.battleProperties.Speed / 200.0f}%" +
+                             $"属性为{playerSlime.battleProperties.type},技能描述:{playerSlime.GetSkillDescription()},性格为{playerSlime.eduProperties.personality}\n";
         string enemyInput = $"史莱姆{enemySlime.eduProperties.name}的生命值有{enemySlime.battleProperties.HP},防御值{enemySlime.battleProperties.Defence},攻击值{enemySlime.battleProperties.Attack}" +
-                            $"属性为${enemySlime.battleProperties.type},技能描述:{enemySlime.GetSkillDescription()},性格为{enemySlime.eduProperties.personality}";
+                            $"暴击率{enemySlime.battleProperties.Luck / 200.0f}%,闪避率{enemySlime.battleProperties.Speed / 200.0f}%" +
+                            $"属性为{enemySlime.battleProperties.type},技能描述:{enemySlime.GetSkillDescription()},性格为{enemySlime.eduProperties.personality}";
         
         var playerMessage = new SendData()
         {
             role = "user", 
-            content = input + x + "\n两个史莱姆描述如下"+ playerInput + enemyInput
+            content = input + x + "先手" + "\n两个史莱姆描述如下"+ playerInput + enemyInput + "" +
+                      "以json格式输出你的结果，包含两个变量:\"predict_result1\":先手史莱姆"+x+"的行动、\"predict_result2\":后手史莱姆"+y+"的行动"
         };
         
         chatHistory.Add(playerMessage);
@@ -361,22 +476,23 @@ public class GameManager : SingleTon<GameManager>
 
     private async void BattleDescription(string bd)
     {
-        
         var msg = new SendData()
             {
                 role = "user", 
-                content = "根据我下面说出的两个史莱姆做出的行动以及行动的结果，以一位活泼可爱的比赛解说的身份，对战斗情况进行描述。\n" +
-                          bd +
-                          criticalOrDoge +
-                          "解说记录以\"Amy:\"开头。"
+                content = "这一回合的情况:\n" +
+                          bd + "\n输出结果以\"Amy\"开头\"" 
             };
-        chatHistory.Add(msg);
-        SendData respone_origin = await GlmHandler.GenerateGlmResponse(chatHistory, 0.6f);
-        
-        chatHistory.Add(respone_origin);
-        
+        chatHistoryV2.Add(msg);
+        SendData respone_origin = await GlmHandler.GenerateGlmResponseV2(chatHistoryV2, 0.8f);
+        chatHistoryV2.Add(respone_origin);
         textPanel.StartTyping(respone_origin.content);
+        SetMutex(false);//本回合回合结束，主Corotine恢复运行
     }
+    
+    #endregion
+
+    #region 演出效果
+
     IEnumerator ActionShow(LogData data,bool _playerFirst)
     {
         Slime first, second;
@@ -390,28 +506,37 @@ public class GameManager : SingleTon<GameManager>
             first = enemySlime;
             second = playerSlime;
         }
-        //翻译行动为中文
-        
-        
-       
+        SlimeAction(first,second,data.predict_result1);//1号演出
+        SlimeAction(second,first,data.predict_result2);//2号演出
+        StartCoroutine(ActionAnimationMain());
         string bd =
             $"{first.eduProperties.name}做出了{ActionTrans(data.predict_result1,first)}，{second.eduProperties.name}做出了{ActionTrans(data.predict_result2,second)}。\n" +
             criticalOrDoge;
-        //BattleDescription(bd);//解说
-        
-        textPanel.StartTyping(bd);
-        SlimeAction(first,second,data.predict_result1);//1号演出
+        BattleDescription(bd);//解说
         yield return new WaitForSeconds(1f);
-        if (gameState == GameState.GameOver)
-        {
-            yield break;
-        }
-        SlimeAction(second,first,data.predict_result2);//2号演出
-        yield return new WaitForSeconds(1f);
-        mutex = false;//本回合回合结束，主Corotine恢复运行
-        print($"{first.eduProperties.name}先手。选择{data.predict_result1},{second.eduProperties.name}选择{data.predict_result2}");
+        //SetMutex(false);//本回合回合结束，主Corotine恢复运行
+        //print($"{first.eduProperties.name}先手。选择{data.predict_result1},{second.eduProperties.name}选择{data.predict_result2}");
        
     }
+
+    IEnumerator ActionAnimationMain()
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            var record = turnEventRecords[i];
+            if(record.action!=null) record.action();
+            record.user.SetAnimatorState(record.userAnimation);
+            if(record.target != null) record.target.SetAnimatorState(record.targetAnimation);
+            yield return new WaitForSeconds(1.0f);
+            record.user.SetAnimatorState(SlimeAnimator.SlimeAnimation.idle);
+            if(record.target != null) record.target.SetAnimatorState(SlimeAnimator.SlimeAnimation.idle);
+            yield return new WaitForSeconds(1f);
+        }
+        continueButton.gameObject.SetActive(true);
+    }
+
+    #endregion
+    
 
     private string ActionTrans(string action,Slime slime)
     {
@@ -436,6 +561,15 @@ public class GameManager : SingleTon<GameManager>
                 Debug.LogError("Unknown action prompt");
                 return "ERROR";
         }
+    }
+
+    private void SetMutex(bool value)
+    {
+        mutex = value;
+        glmLoading.SetAnimation(value);
+        interveneButton.SetLock(value);
+        if(value)
+            continueButton.gameObject.SetActive(false);
     }
 }
 /*

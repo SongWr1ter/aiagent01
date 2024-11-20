@@ -58,6 +58,7 @@ public static class GameplayManager
         if (aim < doge)
         {
             //全部防出去了啊
+            Debug.Log($"全部防出去了啊");
             return -1;
         }
         //是否暴击
@@ -92,7 +93,8 @@ public static class GameplayManager
         if (aim < doge)
         {
             //全部防出去了啊
-            return -1;
+            Debug.Log($"全部防出去了啊");
+            return -1.0f;
         }
         //是否暴击
         float luck = user.battleProperties.Luck / 100f;
