@@ -136,12 +136,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   battleProperties:
     type: 1
-    HP: 100
-    maxHP: 100
+    HP: 60
+    maxHP: 60
     Attack: 20
     Defence: 10
     Luck: 1
-    Speed: 100
+    Speed: 1
   eduProperties:
     name: dingding
     personality: 0

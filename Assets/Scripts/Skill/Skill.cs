@@ -24,6 +24,18 @@ public class Skill
     private string criticalOrDoge;
     private bool doge;
     private bool critical;
+
+    public Skill(string name, string description, SkillType skillType, SlimeType type, float number, int count,
+        bool buffTargetedSelf = true)
+    {
+        this.name = name;
+        this.description = description;
+        this.skillType = skillType;
+        this.type = type;
+        this.number = number;
+        this.count = count;
+        this.buffTargetedSelf = buffTargetedSelf;
+    }
     /// <summary>
     /// ??????
     /// </summary>

@@ -50,8 +50,9 @@ public class GameManager : SingleTon<GameManager>
     private GLMLoading glmLoading;
     private InterveneButton interveneButton;
     public Button continueButton;
-    public static List<string> api_keys = new List<string>();
+    //public static List<string> api_keys = new List<string>();
     private List<turnEventRecord> turnEventRecords = new List<turnEventRecord>();
+    public Sprite gameOverSprite;
     private void Start()
     {
         glmLoading = GameObject.FindObjectOfType<GLMLoading>();
@@ -103,28 +104,43 @@ public class GameManager : SingleTon<GameManager>
             TurnOverEventHandler();
             while (!canContinue)
             {
-                yield return new WaitForSeconds(1f);
+                if (gameState == GameState.GameOver)
+                {
+                    continueButton.GetComponent<Image>().sprite = gameOverSprite;
+                    //玩家死亡，游戏失败画面
+                    if(playerSlime.battleProperties.HP <= 0)
+                    {
+                        BattleDescription("\n史莱姆" + playerSlime.eduProperties.name + "倒下了！游戏结束");
+                    }
+                    //敌人死亡，游戏继续
+                    else
+                    {
+                        BattleDescription("\n史莱姆" + enemySlime.eduProperties.name + "倒下了！"+playerSlime.eduProperties.name+"取得了胜利！");
+                    }
+
+                    canContinue = true;
+                }
+                yield return new WaitForSeconds(0.5f);
             }
         }
-
+        
         //游戏结束
-        //玩家死亡，游戏失败画面
-        if(playerSlime.battleProperties.HP <= 0)
+        if (gameState == GameState.GameOver)
         {
-
-        }
-        //敌人死亡，游戏继续
-        else
-        {
-
+            
         }
     }
     #region UI功能
     private void OnButtonClick()
     {
+        if (gameState == GameState.GameOver)
+        {
+            return;
+        }
         if (mutex == false)
         {
             canContinue = true;
+            textPanel.StartTyping("史莱姆思考中...");
         }
     }
 
@@ -439,7 +455,7 @@ public class GameManager : SingleTon<GameManager>
         Action(_playerFirst);
     }
     
-    public async void Action(bool _playerFirst)
+    private async void Action(bool _playerFirst)
     {
         #region 发送背景条件，让GLM返回战斗流程
         // 读取玩家输入并创建用户信息
@@ -487,6 +503,7 @@ public class GameManager : SingleTon<GameManager>
         chatHistoryV2.Add(respone_origin);
         textPanel.StartTyping(respone_origin.content);
         SetMutex(false);//本回合回合结束，主Corotine恢复运行
+        //continueButton.gameObject.SetActive(true);
     }
     
     #endregion
@@ -508,12 +525,13 @@ public class GameManager : SingleTon<GameManager>
         }
         SlimeAction(first,second,data.predict_result1);//1号演出
         SlimeAction(second,first,data.predict_result2);//2号演出
-        StartCoroutine(ActionAnimationMain());
+        
         string bd =
             $"{first.eduProperties.name}做出了{ActionTrans(data.predict_result1,first)}，{second.eduProperties.name}做出了{ActionTrans(data.predict_result2,second)}。\n" +
             criticalOrDoge;
         BattleDescription(bd);//解说
         yield return new WaitForSeconds(1f);
+        StartCoroutine(ActionAnimationMain());
         //SetMutex(false);//本回合回合结束，主Corotine恢复运行
         //print($"{first.eduProperties.name}先手。选择{data.predict_result1},{second.eduProperties.name}选择{data.predict_result2}");
        
@@ -531,8 +549,18 @@ public class GameManager : SingleTon<GameManager>
             record.user.SetAnimatorState(SlimeAnimator.SlimeAnimation.idle);
             if(record.target != null) record.target.SetAnimatorState(SlimeAnimator.SlimeAnimation.idle);
             yield return new WaitForSeconds(1f);
+            //玩家死亡，游戏失败画面
+            if(playerSlime.battleProperties.HP <= 0)
+            {
+                playerSlime.SetAnimatorState(SlimeAnimator.SlimeAnimation.die);
+            }
+            //敌人死亡，游戏继续
+            else if(enemySlime.battleProperties.HP <= 0)
+            {
+                enemySlime.SetAnimatorState(SlimeAnimator.SlimeAnimation.die);
+            }
         }
-        continueButton.gameObject.SetActive(true);
+        
     }
 
     #endregion
@@ -568,8 +596,7 @@ public class GameManager : SingleTon<GameManager>
         mutex = value;
         glmLoading.SetAnimation(value);
         interveneButton.SetLock(value);
-        if(value)
-            continueButton.gameObject.SetActive(false);
+        continueButton.gameObject.SetActive(!value);
     }
 }
 /*
