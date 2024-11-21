@@ -48,15 +48,41 @@ public class GameManager : SingleTon<GameManager>
     public StatePanelItem enemyPanel;
     public TextPanel textPanel;
     private GLMLoading glmLoading;
+    private GameOverPanel gameOverPanel;
     private InterveneButton interveneButton;
     public Button continueButton;
-    //public static List<string> api_keys = new List<string>();
+    public SlimeSetSO slimeSet;
+    [HideInInspector]public static List<string> api_keys = new List<string>();
+    [HideInInspector]public static List<string> secrect_keys = new List<string>();
+    public static List<string> keys = new List<string>
+    {
+        "f2090ce4c5f65389b1177a024bae420c.OFvk0T14U0eGgYv6",
+        "7f5b20f796c1588342dc17f9cfb621da.spD6aRgXLCHAFsiO"
+    };
     private List<turnEventRecord> turnEventRecords = new List<turnEventRecord>();
     public Sprite gameOverSprite;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        for (int i = 0;i<keys.Count;i++)
+        {
+            var k = keys[i];
+            var _apiKey = k.Split('.')[0];
+            var _secretKey = k.Split(".")[1];
+            api_keys.Add(_apiKey);
+            secrect_keys.Add(_secretKey);
+        }
+
+        playerPrefab = slimeSet.GetPlayerSlime();
+        enemyPrefab = slimeSet.GetRandomSlime();
+    }
+
     private void Start()
     {
         glmLoading = GameObject.FindObjectOfType<GLMLoading>();
         interveneButton = GameObject.FindObjectOfType<InterveneButton>();
+        gameOverPanel = GameObject.FindObjectOfType<GameOverPanel>();
         continueButton.onClick.AddListener(OnButtonClick);
     }
 
@@ -110,12 +136,12 @@ public class GameManager : SingleTon<GameManager>
                     //玩家死亡，游戏失败画面
                     if(playerSlime.battleProperties.HP <= 0)
                     {
-                        BattleDescription("\n史莱姆" + playerSlime.eduProperties.name + "倒下了！游戏结束");
+                        BattleDescription("\n史莱姆" + playerSlime.eduProperties.name + "倒下了！游戏结束",true);
                     }
                     //敌人死亡，游戏继续
                     else
                     {
-                        BattleDescription("\n史莱姆" + enemySlime.eduProperties.name + "倒下了！"+playerSlime.eduProperties.name+"取得了胜利！");
+                        BattleDescription("\n史莱姆" + enemySlime.eduProperties.name + "倒下了！"+playerSlime.eduProperties.name+"取得了胜利！",true);
                     }
 
                     canContinue = true;
@@ -490,7 +516,7 @@ public class GameManager : SingleTon<GameManager>
         StartCoroutine(ActionShow(data, _playerFirst));
     }
 
-    private async void BattleDescription(string bd)
+    private async void BattleDescription(string bd,bool flag = false)
     {
         var msg = new SendData()
             {
@@ -504,6 +530,11 @@ public class GameManager : SingleTon<GameManager>
         textPanel.StartTyping(respone_origin.content);
         SetMutex(false);//本回合回合结束，主Corotine恢复运行
         //continueButton.gameObject.SetActive(true);
+        if (flag)
+        {
+            //Game Over Already
+            gameOverPanel.OnGameOver(playerSlime.battleProperties.HP > 0);
+        }
     }
     
     #endregion
@@ -549,16 +580,21 @@ public class GameManager : SingleTon<GameManager>
             record.user.SetAnimatorState(SlimeAnimator.SlimeAnimation.idle);
             if(record.target != null) record.target.SetAnimatorState(SlimeAnimator.SlimeAnimation.idle);
             yield return new WaitForSeconds(1f);
-            //玩家死亡，游戏失败画面
-            if(playerSlime.battleProperties.HP <= 0)
+            if (gameState == GameState.GameOver)
             {
-                playerSlime.SetAnimatorState(SlimeAnimator.SlimeAnimation.die);
+                //玩家死亡，游戏失败画面
+                if(playerSlime.battleProperties.HP <= 0)
+                {
+                    playerSlime.SetAnimatorState(SlimeAnimator.SlimeAnimation.die);
+                }
+                //敌人死亡，游戏继续
+                else if(enemySlime.battleProperties.HP <= 0)
+                {
+                    enemySlime.SetAnimatorState(SlimeAnimator.SlimeAnimation.die);
+                }
+                yield break;
             }
-            //敌人死亡，游戏继续
-            else if(enemySlime.battleProperties.HP <= 0)
-            {
-                enemySlime.SetAnimatorState(SlimeAnimator.SlimeAnimation.die);
-            }
+            
         }
         
     }

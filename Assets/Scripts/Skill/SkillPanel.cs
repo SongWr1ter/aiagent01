@@ -7,7 +7,6 @@ using UnityEngine;
 
 public class SkillPanel : MonoBehaviour
 {
-    public Slime Slime;
     private List<Skill> skills = new List<Skill>();
     private int skillIndex = 0;
     [SerializeField] private TMP_Text skillNameText;
@@ -31,7 +30,7 @@ public class SkillPanel : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            PanelInit(Slime.skills);
+            PanelInit(GameManager.Instance.playerSlime.skills);
             //PanelInit(Tskills);
             toggle();
         }
