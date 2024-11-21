@@ -12,6 +12,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using GlmUnity;
 using Newtonsoft.Json;
+using UnityEngine.SceneManagement;
+using Random = Unity.Mathematics.Random;
 
 public class CrucibleManager : MonoBehaviour
 {
@@ -27,9 +29,18 @@ public class CrucibleManager : MonoBehaviour
     public Button[] subtractButtons; // 减少按钮
     public TMP_Text[] ingredientSum; // 显示每个原材料的量
     public Button generateButton; // 生成按钮
-    public TMP_InputField playerInput;//slime名字
+    public TMP_InputField playerInput; //slime名字
     public TMP_Text informationText;
     public TMP_Text descriptionText;
+    [Tooltip("史莱姆模板,从Prefab里面找")] public GameObject slimeTemplete;
+    [Tooltip("史莱姆生成的位置")] public Transform generatePos;
+    public List<RuntimeAnimatorController> animators = new List<RuntimeAnimatorController>();
+    public SlimeSetSO SlimeSetSo;
+    public Button proceedButton;
+    public SkillList skillList;
+
+    public static readonly string[] colors = new string[]
+        { "bej", "black", "blue", "brown", "dark", "gray", "orange", "purple", "red", "pink", "yellow" };
 
     void Start()
     {
@@ -77,7 +88,7 @@ public class CrucibleManager : MonoBehaviour
         ingredientSum[2].text = materials[2].ToString();
         ingredientSum[3].text = materials[3].ToString();
         ingredientSum[4].text = materials[4].ToString();
-        
+
 
         // 控制按钮状态
         for (int i = 0; i < materials.Count; i++)
@@ -85,12 +96,24 @@ public class CrucibleManager : MonoBehaviour
             addButtons[i].interactable = currentTotal < MAX_CAPACITY;
             subtractButtons[i].interactable = materials[i] > 0;
         }
+
         generateButton.interactable = currentTotal > 0; // 确保至少有一个原料
-        
+
     }
-[SerializeField]
-    private List<SendData> chatHistory = new List<SendData>();
+
+    [SerializeField] private List<SendData> chatHistory = new List<SendData>();
     private string responseText = "";
+
+    private static string GetColorsWithDot()
+    {
+        string result = "";
+        foreach (var color in colors)
+        {
+            result += "'" + color + "',";
+        }
+
+        return result;
+    }
 
     private void StartGLM()
     {
@@ -106,7 +129,7 @@ public class CrucibleManager : MonoBehaviour
                       "- 圣湖泉水：这种成分会让史莱姆性格更加平静温和，更倾向于防御，运气会更好，也更倾向于水属性；\n" +
                       "- 蜂蜜：这种成分会让史莱姆和训练家更亲密，更容易获得成长\n" +
                       "每一次对话我会按照顺序告诉你这5种材料的含量，还有用户为这只史莱姆取的名字。你需要描述最后生成的这个史莱姆，并且生成一段包含这些关键信息的json代码。json应该包含这些内容：\n" +
-                      "Name:史莱姆的名字。\n"+
+                      "Name:史莱姆的名字。\n" +
                       "HP：描述史莱姆的生命力，越高说明史莱姆耐力越高，它的值应该在100~200之间\n" +
                       "type：在'Water','Fire','Wood','Lightning',中选择，代表史莱姆的属性\n " +
                       "Attack：描述史莱姆的攻击力，越高说明史莱姆攻击越高，它的值应该在\n" +
@@ -116,6 +139,8 @@ public class CrucibleManager : MonoBehaviour
                       "personality：描述史莱姆的性格，在'Brave','Contious','Smart','Calmly','Friendly'中选择一种\n" +
                       "Intimacy：描述史莱姆的驯服度，越高说明史莱姆和训练家越亲近，它的值应该在10~50\n" +
                       "Grown：描述史莱姆的成长性，越高说明史莱姆越容易成长，它的值应该在10~50\n" +
+                      "Skill：史莱姆学习到的技能名称,技能从" + skillList.GetSkillDescription() + "选择4个，并且以空格隔开\n" +
+                      $"Color：史莱姆的颜色，在中" + GetColorsWithDot() + "选择一种\n" +
                       "以你的描述内容，生成一段json代码。\n" +
                       "然后用一段生动的文字，以第二人称视角，描述这只史莱姆与它的训练家('你')见面的场景，注意史莱姆不会说话，字数在200字左右。\n" +
                       "这段文字请以‘Amy：’开头。\n" +
@@ -128,10 +153,10 @@ public class CrucibleManager : MonoBehaviour
 
         // 将system prompt作为第一条对话记录加入chatHistory
         chatHistory.Add(systemPrompt);
-        
+
     }
-    
-    
+
+
     private async void SendGLM()
     {
         string slimeName = playerInput.text;
@@ -146,10 +171,10 @@ public class CrucibleManager : MonoBehaviour
             content = sendText
         };
         chatHistory.Add(playerMessage);
-        
+
         // 使用GLMHandler.GenerateGLMResponse生成GLM回复，设置tmeperature=0.8
         // 注意需要使用await关键词
-        SendData respone = await GlmHandler.GenerateGlmResponse(chatHistory, 0.8f);
+        SendData respone = await GlmHandler.GenerateGlmResponseV3(chatHistory, 0.8f, null, -1);
         print(respone.content);
         // 将GLM的回复加进chatHistory
         chatHistory.Add(respone);
@@ -176,31 +201,34 @@ public class CrucibleManager : MonoBehaviour
         // Console.WriteLine("\n提取的描述文本：");
         // Console.WriteLine(description);
         create();
-        
-        
+
+
     }
-    
+
     public void generate()
     {
         SendGLM();
-        
-    }
-    
-    class SlimeAttributes
-    {
-        public string Name { get; set; }
-        public int HP { get; set; }
-        public string Type { get; set; }
-        public int Attack { get; set; }
-        public int Defence { get; set; }
-        public int Luck { get; set; }
-        public int Speed { get; set; }
-        public string Personality { get; set; }
-        public int Intimacy { get; set; }
-        public int Grown { get; set; }
+        SoundManager.PlayAudio("spell");
     }
 
-    SlimeType getType(string type)
+    [Serializable]
+    public class SlimeAttributes
+    {
+        public string Name;
+        public int HP;
+        public string Type;
+        public int Attack;
+        public int Defence;
+        public int Luck;
+        public int Speed;
+        public string Personality;
+        public int Intimacy;
+        public int Grown;
+        public string Skill;
+        public string Color;
+    }
+
+    public static SlimeType getType(string type)
     {
         Dictionary<string, SlimeType> slimeTypeMapping = new Dictionary<string, SlimeType>
         {
@@ -210,6 +238,7 @@ public class CrucibleManager : MonoBehaviour
             { "Wood", SlimeType.Wood },
             { "None", SlimeType.None }
         };
+
         static SlimeType MatchSlimeType(string input, Dictionary<string, SlimeType> typeMapping)
         {
             // 精确匹配
@@ -274,7 +303,7 @@ public class CrucibleManager : MonoBehaviour
 
     }
 
-    Personality getPersonality(string type)
+    public static Personality getPersonality(string type)
     {
         Dictionary<string, Personality> personalityMapping = new Dictionary<string, Personality>
         {
@@ -284,6 +313,7 @@ public class CrucibleManager : MonoBehaviour
             { "Calmly", Personality.Calmly },
             { "Friendly", Personality.Friendly }
         };
+
         static Personality MatchPersonality(string input, Dictionary<string, Personality> typeMapping)
         {
             // 精确匹配
@@ -346,11 +376,23 @@ public class CrucibleManager : MonoBehaviour
 
         return MatchPersonality(type, personalityMapping);
     }
-    
+
+    private GameObject go;
+
     void create()
     {
         SlimeAttributes slimeData = JsonConvert.DeserializeObject<SlimeAttributes>(json);
-        GameObject go = new GameObject();
+        if (go != null) Destroy(go);
+        go = Instantiate(slimeTemplete, generatePos.position, Quaternion.identity);
+
+        for (var i = 0; i < colors.Length; i++)
+        {
+            if (slimeData.Color != colors[i]) continue;
+            var a = animators[i];
+            go.GetComponent<Animator>().runtimeAnimatorController = a;
+            break;
+        }
+
         var slime = go.GetComponent<Slime>();
         var b = slime.battleProperties;
         var e = slime.eduProperties;
@@ -368,13 +410,52 @@ public class CrucibleManager : MonoBehaviour
         e.Awaken = false;
         e.personality = getPersonality(slimeData.Personality);
         e.isPlayer = true;
+        proceedButton.gameObject.SetActive(true);
 
+        var subString = slimeData.Skill.Split(' ');
+        foreach (var s in subString)
+        {
+            var skill = skillList.GetSkillByName(s);
+            if (skill != null) slime.LearnSkill(skill);
+        }
 
+        SlimeSetSo.CreateSlime(slimeData);
 
     }
-    
 
-//     private void ReciveGLM()
+    public void ProceedButton()
+    {
+        SoundManager.PlayAudio("button");
+        StartCoroutine(AsyncLoadScene(1));
+    }
+
+    IEnumerator AsyncLoadScene(int sceneName)
+    {
+        yield return new WaitForSeconds(2f);
+        // 异步加载场景
+        AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName);
+
+        // 确保场景不会自动激活
+        if (operation != null)
+        {
+            operation.allowSceneActivation = false;
+
+            while (!operation.isDone)
+            {
+                // 当加载进度达到0.9时，认为场景已加载完毕
+                if (operation.progress >= 0.9f)
+                {
+                    // 可以在这里做一些加载完毕前的准备工作
+
+                    // 激活场景
+                    operation.allowSceneActivation = true;
+                }
+
+                yield return null;
+            }
+        }
+
+        //     private void ReciveGLM()
 //     {
 //         string inputText = "";
 //         
@@ -397,6 +478,7 @@ public class CrucibleManager : MonoBehaviour
 //         Console.WriteLine(description);
 //
 //     }
+    }
 }
 
 

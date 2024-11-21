@@ -33,6 +33,11 @@ public class GameOverPanel : MonoBehaviour
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
+    
+    public void OnReload()
+    {
+        SceneManager.LoadScene(0);
+    }
 
     void show(bool flag)
     {

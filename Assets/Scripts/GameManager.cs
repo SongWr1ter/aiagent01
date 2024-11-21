@@ -84,6 +84,8 @@ public class GameManager : SingleTon<GameManager>
         interveneButton = GameObject.FindObjectOfType<InterveneButton>();
         gameOverPanel = GameObject.FindObjectOfType<GameOverPanel>();
         continueButton.onClick.AddListener(OnButtonClick);
+        
+        StartCoroutine(Setup());
     }
 
     private void OnDisable()
@@ -91,21 +93,21 @@ public class GameManager : SingleTon<GameManager>
         continueButton.onClick.RemoveListener(OnButtonClick);
     }
 
-    public void Setup()
+    IEnumerator Setup()
     {
+        yield return new WaitForSeconds(3f);
         gameState = GameState.Start;
-        
         StartCoroutine(SetupBattle());
     }
     bool playerFirst;
     IEnumerator SetupBattle()
     {
         //选手就为
-        GameObject player = Instantiate(playerPrefab);
+        GameObject player = playerPrefab;
         player.transform.position = playerSpawn.position;
         playerSlime = player.GetComponent<Slime>();
         playerPanel.Init(playerSlime);
-        GameObject enemy = Instantiate(enemyPrefab);
+        GameObject enemy = enemyPrefab;
         enemy.transform.position = enemySpawn.position;
         enemySlime = enemy.GetComponent<Slime>();
         enemyPanel.Init(enemySlime);
@@ -237,6 +239,7 @@ public class GameManager : SingleTon<GameManager>
     {
         float damage = GameplayManager.GetDamage(attacker,defender);
         bool doge = false;
+        bool critical = false;
         if (damage == -1)
         {
             //被闪避
@@ -247,6 +250,7 @@ public class GameManager : SingleTon<GameManager>
         {
             //暴击
             damage *= -1.0f;
+            critical = true;
             criticalOrDoge += attacker.eduProperties.name + "打出了暴击!";
         }
         
@@ -257,7 +261,18 @@ public class GameManager : SingleTon<GameManager>
             action = () =>
             {
                 bool res = defender.RecvDamage(damage);
-                if (doge) defender.DogeReact();
+                if (doge)
+                {
+                    defender.DogeReact();
+                    SoundManager.PlayAudio("doge");
+                }else if (critical)
+                {
+                    SoundManager.PlayAudio("critical");
+                }
+                else
+                {
+                    SoundManager.PlayAudio("hit");
+                }
                 if (res == true)
                 {
                     //defender has dead
@@ -280,6 +295,7 @@ public class GameManager : SingleTon<GameManager>
             target = null,
             action = () =>
             {
+                SoundManager.PlayAudio("defence");
                 slime.DefendReact();
                 slime.battleProperties.Defence += bonus;
                 AddTurnOverEvent(new TurnOverEvent
@@ -330,6 +346,7 @@ public class GameManager : SingleTon<GameManager>
             action = () =>
             {
                 user.NoobReact();
+                SoundManager.PlayAudio("noob");
             },
             skill_id = 0,
             userAnimation = SlimeAnimator.SlimeAnimation.idle,
@@ -490,7 +507,7 @@ public class GameManager : SingleTon<GameManager>
         // 使用GLMHandler.GenerateGLMResponse生成GLM回复，设置tmeperature=0.8
         // 注意需要使用await关键词
         SendData respone_origin = await GlmHandler.GenerateGlmResponse(chatHistory, 0.8f);
-        
+        chatHistory.Add(respone_origin);
         //print(respone_origin.content);
         #endregion
        
@@ -512,7 +529,7 @@ public class GameManager : SingleTon<GameManager>
         LogData data = JsonUtility.FromJson<LogData>(extractedString);
         
         #endregion
-        chatHistory.Add(respone_origin);
+        
         StartCoroutine(ActionShow(data, _playerFirst));
     }
 

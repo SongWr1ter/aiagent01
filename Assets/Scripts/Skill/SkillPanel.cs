@@ -56,6 +56,16 @@ public class SkillPanel : MonoBehaviour
         SetText(0);
     }
 
+    public void Switch2Player()
+    {
+        PanelInit(GameManager.Instance.playerSlime.skills);
+    }
+    
+    public void Switch2Enemy()
+    {
+        PanelInit(GameManager.Instance.enemySlime.skills);
+    }
+
     public void forward()
     {
         if (++skillIndex >= skills.Count)

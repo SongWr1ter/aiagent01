@@ -208,6 +208,7 @@ namespace GlmUnity
 
         private static string GetApiKey(int i)
         {
+            if(i==-1) return _apiKey;
             --i;
             string apiKey = _apiKey;
             if (GameManager.api_keys != null)
@@ -219,6 +220,7 @@ namespace GlmUnity
 
         private static string GetSecretKey(int i)
         {
+            if(i==-1) return _secretKey;
             --i;
             string secretKey = _secretKey;
             if (GameManager.secrect_keys != null)

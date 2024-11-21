@@ -92,6 +92,7 @@ public class Skill
             default:
                 break;
         }
+        SoundManager.PlayAudio("spell");
         return resl;
         
     }

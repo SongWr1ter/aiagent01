@@ -12,5 +12,84 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c31df51e976a684c9bd67ff2cef3445, type: 3}
   m_Name: SlimeSet
   m_EditorClassIdentifier: 
-  slimes: []
+  slimes:
+  - Name: "\u60A0\u60A0"
+    HP: 150
+    Type: Water
+    Attack: 30
+    Defence: 20
+    Luck: 40
+    Speed: 25
+    Personality: Calmly
+    Intimacy: 45
+    Grown: 35
+    Skill: "\u6D77\u5578\u5730\u9707 \u7834\u519B\u4E4B\u52BF \u94DC\u5899\u94C1\u58C1
+      \u5FC3\u60F3\u4E8B\u6210"
+    Color: blue
+  - Name: "\u6211\u8D85\u51B0"
+    HP: 150
+    Type: Water
+    Attack: 30
+    Defence: 25
+    Luck: 40
+    Speed: 20
+    Personality: Calmly
+    Intimacy: 30
+    Grown: 45
+    Skill: "\u6D77\u5578\u5730\u9707 \u7834\u7A7A\u65A9 \u51B0\u5C01\u7834 \u971C\u4E4B\u6B7B\u4EA1\u7F20\u7ED5"
+    Color: blue
+  - Name: "\u4E94\u4E94"
+    HP: 160
+    Type: Fire
+    Attack: 45
+    Defence: 20
+    Luck: 15
+    Speed: 35
+    Personality: Brave
+    Intimacy: 35
+    Grown: 30
+    Skill: "\u70C8\u7130\u51B2\u51FB \u706B\u71CE\u539F \u594B\u53D1\u51B2\u523A
+      \u94DC\u5899\u94C1\u58C1"
+    Color: red
+  - Name: "\u8001\u516B"
+    HP: 150
+    Type: Fire
+    Attack: 40
+    Defence: 25
+    Luck: 20
+    Speed: 30
+    Personality: Brave
+    Intimacy: 30
+    Grown: 25
+    Skill: "\u70C8\u7130\u51B2\u51FB \u706B\u71CE\u539F \u594B\u53D1\u51B2\u523A
+      \u8D22\u8FD0\u4EA8\u901A"
+    Color: red
+  - Name: "\u963F\u5F25\u8BFA\u65AF"
+    HP: 150
+    Type: Fire
+    Attack: 40
+    Defence: 25
+    Luck: 15
+    Speed: 35
+    Personality: Brave
+    Intimacy: 30
+    Grown: 25
+    Skill: "\u70C8\u7130\u51B2\u51FB \u706B\u71CE\u539F \u594B\u53D1\u51B2\u523A
+      \u8D22\u8FD0\u4EA8\u901A"
+    Color: red
   maxCount: 20
+  prefab: {fileID: 8313963516462405062, guid: 455c1f8aa9438494daeed00ecc7eaf68, type: 3}
+  skillList: {fileID: 11400000, guid: 8d1ba1e048a04cb498e67391158ce2d1, type: 2}
+  animators:
+  - {fileID: 9100000, guid: a102014fb661e364dbd04c55d5e3e0d1, type: 2}
+  - {fileID: 9100000, guid: ae8aeebc71af28d4cbebdb3cf0dc9ef0, type: 2}
+  - {fileID: 9100000, guid: 6c2ddfb3987b02c42b4f222f4db68407, type: 2}
+  - {fileID: 9100000, guid: fd73e96bb44f9304a96c931595849da0, type: 2}
+  - {fileID: 9100000, guid: 2723ee74b57746044b9131d4b1e93211, type: 2}
+  - {fileID: 9100000, guid: 3fd6652da3db2494dabba5fcff449875, type: 2}
+  - {fileID: 9100000, guid: 626878f0189140945b0a722b791a665d, type: 2}
+  - {fileID: 9100000, guid: 039b8f136ede6514292a29c126ab3c15, type: 2}
+  - {fileID: 9100000, guid: 391c88f749ff9fe4a87b2ac17f7a46bb, type: 2}
+  - {fileID: 9100000, guid: 470b719ff35340d47a95dcaec38ab57d, type: 2}
+  - {fileID: 9100000, guid: 4e05e7fca5fac054ca59443d7ac36d73, type: 2}
+  - {fileID: 9100000, guid: 4f3e40456ba4586459d8ec006d184ede, type: 2}

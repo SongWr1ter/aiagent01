@@ -21,37 +21,37 @@ public class SkillGenerate : MonoBehaviour
         chatList.Add(sendData);
     }
     
-    public static List<string> SplitStringIntoRandomSubstrings(string input, int numberOfSubstrings)
-    {
-        System.Random random = new System. Random();
-        int stringLength = input.Length;
-        List<int> splitPoints = new List<int>();
- 
-        while (splitPoints.Count < numberOfSubstrings - 1)
-        {
-            int point = random.Next(1, stringLength); // 生成一个介于1和stringLength - 1之间的随机点
-            if (!splitPoints.Contains(point))
-            {
-                splitPoints.Add(point);
-            }
-        }
- 
-        splitPoints.Sort(); // 将切分点排序以确保它们按升序排列
- 
-        List<string> substrings = new List<string>();
-        int previousPoint = 0;
- 
-        for (int i = 0; i < splitPoints.Count; i++)
-        {
-            substrings.Add(input.Substring(previousPoint, splitPoints[i] - previousPoint));
-            previousPoint = splitPoints[i];
-        }
- 
-        // 添加最后一个子串
-        substrings.Add(input.Substring(previousPoint, stringLength - previousPoint));
- 
-        return substrings;
-    }
+    // public static List<string> SplitStringIntoRandomSubstrings(string input, int numberOfSubstrings)
+    // {
+    //     System.Random random = new System. Random();
+    //     int stringLength = input.Length;
+    //     List<int> splitPoints = new List<int>();
+    //
+    //     while (splitPoints.Count < numberOfSubstrings - 1)
+    //     {
+    //         int point = random.Next(1, stringLength); // 生成一个介于1和stringLength - 1之间的随机点
+    //         if (!splitPoints.Contains(point))
+    //         {
+    //             splitPoints.Add(point);
+    //         }
+    //     }
+    //
+    //     splitPoints.Sort(); // 将切分点排序以确保它们按升序排列
+    //
+    //     List<string> substrings = new List<string>();
+    //     int previousPoint = 0;
+    //
+    //     for (int i = 0; i < splitPoints.Count; i++)
+    //     {
+    //         substrings.Add(input.Substring(previousPoint, splitPoints[i] - previousPoint));
+    //         previousPoint = splitPoints[i];
+    //     }
+    //
+    //     // 添加最后一个子串
+    //     substrings.Add(input.Substring(previousPoint, stringLength - previousPoint));
+    //
+    //     return substrings;
+    // }
 
     public async void CreateAvatar()
     {

@@ -23,4 +23,15 @@ public class SkillList : ScriptableObject
     {
         skillTable.Add(skill);
     }
+
+    public string GetSkillDescription()
+    {
+        string result = "";
+        foreach (var skill in skillTable)
+        {
+            result += "'"+skill.name + "',";
+        }
+        result += "\n";
+        return result;
+    }
 }
